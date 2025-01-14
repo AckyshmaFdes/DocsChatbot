@@ -4,10 +4,10 @@ This Project focuses on building a Question and Answer Chatbot using Retrieval-A
 # Branches
 The Repository contains two branches which include: 
 - Main
- The main branch contains essential documents and other related resources for the project.
+-The main branch contains essential documents and other related resources for the project.
   
 - Codes
-The codes branch is where the core development code resides. To access and view the latest version of the code, please navigate to this branch. 
+-The Codes branch is where the core development code resides. To access and view the latest version of the code, please navigate to this branch. 
 
 
 
