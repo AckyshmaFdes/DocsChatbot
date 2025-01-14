@@ -96,7 +96,7 @@ def user_input(user_question):
 
 def main():
     st.set_page_config(page_title="Chat with Multiple PDFs")
-    st.header("Chat with Multiple PDFs using Gemini")
+    st.header("Chat with Multiple PDFs using Gemini!!")
 
     # Predefined paths to PDF files
     pdf_paths = [
