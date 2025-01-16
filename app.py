@@ -90,7 +90,8 @@ qa = RetrievalQA.from_chain_type(
 
 # Streamlit interface
 st.title("Q&A Chatbot")
-st.write("Ask Questions from the PDF Documents")
+st.write("Ask questions from the PDF Documents")
+
 
 # Chat history
 if "history" not in st.session_state:
