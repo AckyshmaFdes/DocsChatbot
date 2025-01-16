@@ -1,138 +1,109 @@
 import streamlit as st
-from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-import google.generativeai as genai
-from langchain.chains.question_answering import load_qa_chain
-from langchain.prompts import PromptTemplate
+from langchain.vectorstores import Qdrant
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.schema import retriever
+from langchain.chains import RetrievalQA
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.llms import OpenAI
 from dotenv import load_dotenv
-from qdrant_client import QdrantClient
-from qdrant_client.models import VectorParams, Distance
+import qdrant_client
 import os
+import pdfplumber
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Initialize Qdrant client
-qdrant_client = QdrantClient(
-    url="https://66db3bed-f1a5-4513-bf57-a214be870f4c.eu-west-2-0.aws.cloud.qdrant.io:6333",
-    api_key="KbN6Upf3ixu-RR7FlXLu6m9RtesvGG_EHjMZ780zrq9bVJDa014ehQ",
-    timeout=60
+os.environ['QDRANT_HOST'] = "https://aabbd7fd-619f-48fd-a0e8-d1d3c22130ba.us-east4-0.gcp.cloud.qdrant.io:6333"
+os.environ['QDRANT_API_KEY'] = "FvqHFsYVe6efmsUTaJR_S8hbrB9w7KRyWV-Az48c2IC8Dhm1qq3USQ"
+
+client = qdrant_client.QdrantClient(
+    os.getenv('QDRANT_HOST'),
+    api_key=os.getenv('QDRANT_API_KEY'),
+    timeout=30
+
 )
 
-def create_collection_if_not_exists():
-    collection_name = "collection"
-    collections = [col.name for col in qdrant_client.get_collections().collections]
+# Create collection
+os.environ['QDRANT_COLLECTION_NAME'] = "My_Collection"
 
-    if collection_name not in collections:
-        qdrant_client.recreate_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=768, distance=Distance.COSINE)
-        )
-        print(f"Collection '{collection_name}' created successfully.")
-    else:
-        print(f"Collection '{collection_name}' already exists.")
+vectors_config = qdrant_client.http.models.VectorParams(
+    size=1536,  # OpenAI
+    distance=qdrant_client.http.models.Distance.COSINE
+)
 
-# Read the PDFs and extract details
-def get_pdf_text(pdf_paths):
-    text = ""
-    for pdf_path in pdf_paths:
-        pdf_reader = PdfReader(pdf_path)
-        for page in pdf_reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text
-    return text
+client.recreate_collection(
+    collection_name=os.getenv('QDRANT_COLLECTION_NAME'),
+    vectors_config=vectors_config
+)
 
-# Converts text into smaller chunks
-def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=20)
+OPENAI_API_KEY= os.getenv("OPENAI_API_KEY")
+
+
+
+embeddings = OpenAIEmbeddings()
+
+vector_store = Qdrant(
+    client=client,
+    collection_name=os.getenv("QDRANT_COLLECTION_NAME"),
+    embeddings=embeddings
+)
+
+def get_chunks(text):
+    text_splitter = CharacterTextSplitter(
+        separator="\n",
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len
+    )
     chunks = text_splitter.split_text(text)
     return chunks
 
-# Conversational chain for Q&A
-def get_conversational_chain():
-    prompt_template = """
-    Answer the question as detailed as possible from the provided context. If the answer is not in the provided context, 
-    just say, "The answer is not available in the context." Do not provide incorrect answers.
+# Function to extract text from PDF
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            text += page.extract_text()
+    return text
 
-    Context:
-    {context}
-
-    Question:
-    {question}
-
-    Answer:
-    """
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
-    return chain
-
-# User input for Q&A
-def user_input(user_question):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-
-    # Search for relevant documents in the Qdrant collection
-    search_results = qdrant_client.search(
-        collection_name="collection",
-        query_vector=embeddings.embed_query(user_question),
-        limit=5
-    )
-    docs = [result.payload["text"] for result in search_results]
-
-    if not docs:
-        st.write("No relevant documents found.")
-        return
-
-    chain = get_conversational_chain()
-    response = chain(
-        {"input_documents": docs, "question": user_question},
-        return_only_outputs=True
-    )
-
-    st.write("Reply:", response.get("output_text", "No response generated."))
-
-def main():
-    st.set_page_config(page_title="Chat with Multiple PDFs")
-    st.header("Chat with Multiple PDFs using Gemini!!")
-
-    # Predefined paths to PDF files
-    pdf_paths = [
-        "Data_Communication_Overview.pdf",
-        "Digital_Signal_Processing.pdf"
+# Read the PDF document instead of the text file
+pdf_paths = [
+    "Digital_Signal_Processing Doc.pdf",
+    "Data Communication.pdf"
     ]
 
-    # Button to process PDFs
-    if st.button("Process PDFs"):
-        with st.spinner("Processing..."):
-            raw_text = get_pdf_text(pdf_paths)
-            if not raw_text:
-                st.error("Failed to extract text from the PDFs. Please check the files.")
-                return
+all_texts = []  # This will hold all the text from all PDFs
+for pdf_path in pdf_paths:
+    raw_text = extract_text_from_pdf(pdf_path)
+    texts = get_chunks(raw_text)
+    all_texts.extend(texts)  # Add chunks from this PDF to the list
 
-            text_chunks = get_text_chunks(raw_text)
+# Add all texts from all PDFs into the vector store
+vector_store.add_texts(all_texts)
 
-            # Embed text chunks and upload to Qdrant
-            embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-            vectors = embeddings.embed_documents(text_chunks)
-            print("Vector dimensions:", len(vectors[0]))
-            payloads = [{"text": chunk} for chunk in text_chunks]
 
-            create_collection_if_not_exists()
-            qdrant_client.upload_collection(
-                collection_name="collection",
-                vectors=vectors,
-                payload=payloads,
-                batch_size=64
-            )
-            st.success("PDF data processed and uploaded to Qdrant successfully.")
+qa = RetrievalQA.from_chain_type(
+    llm=OpenAI(),
+    chain_type="stuff",
+    retriever=vector_store.as_retriever()
+)
 
-    # Question input
-    user_question = st.text_input("Ask a question based on the PDF content:")
-    if user_question:
-        user_input(user_question)
+# Streamlit interface
+st.title("Q&A Chatbot")
+st.write("Ask questions from the PDF Documents")
 
-if __name__ == "__main__":
-    main()
+# Chat history
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+query = st.text_input("Enter your question:", "")
+if st.button("Submit"):
+    if query:
+        response = qa.run(query)
+        st.session_state.history.append((query, response))
+
+if st.session_state.history:
+    st.write("### Chat History")
+    for q, r in st.session_state.history:
+        st.write(f"**Question:** {q}")
+        st.write(f"**Answer:** {r}")

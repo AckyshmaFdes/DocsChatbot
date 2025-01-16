@@ -1,8 +1,7 @@
 streamlit
-google-generativeai
-langchain
-PyPDF2
-qdrant-client
-langchain_google_genai
+langchain 
+qdrant_client 
+openai 
+langchain-community
+pdfplumber
 python-dotenv
-langchain_community
