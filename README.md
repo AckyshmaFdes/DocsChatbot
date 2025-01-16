@@ -9,8 +9,8 @@ The Repository contains three branches which include:
 - Codes
 -The Codes branch is where the core development code resides. To access and view the latest version of the code, please navigate to this branch.
 
--Master
--Note: This branch was created due to the attempt made to shift the .env file to .gitignore.
+- Master
+- Note: This branch was created due to the attempt made to shift the .env file to .gitignore.
 
 
 
