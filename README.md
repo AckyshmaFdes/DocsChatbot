@@ -11,7 +11,7 @@ The Repository contains three branches which include:
 
 - Master
   
--Note: The Master branch was created due to the attempt made to shift the .env file to .gitignore.
+Note: The Master branch was created due to the attempt made to shift the .env file to .gitignore.
 
 
 
