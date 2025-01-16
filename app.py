@@ -13,8 +13,8 @@ import pdfplumber
 load_dotenv()
 
 
-os.environ['QDRANT_HOST'] = "https://aabbd7fd-619f-48fd-a0e8-d1d3c22130ba.us-east4-0.gcp.cloud.qdrant.io:6333"
-os.environ['QDRANT_API_KEY'] = "FvqHFsYVe6efmsUTaJR_S8hbrB9w7KRyWV-Az48c2IC8Dhm1qq3USQ"
+os.environ['QDRANT_HOST'] = ""
+os.environ['QDRANT_API_KEY'] = ""
 
 client = qdrant_client.QdrantClient(
     os.getenv('QDRANT_HOST'),
