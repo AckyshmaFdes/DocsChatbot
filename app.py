@@ -23,11 +23,11 @@ client = qdrant_client.QdrantClient(
 
 )
 
-# Create collection
+# Created collection
 os.environ['QDRANT_COLLECTION_NAME'] = "My_Collection"
 
 vectors_config = qdrant_client.http.models.VectorParams(
-    size=1536,  # OpenAI
+    size=1536, 
     distance=qdrant_client.http.models.Distance.COSINE
 )
 
@@ -58,7 +58,7 @@ def get_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-# Function to extract text from PDF
+# Extract text from PDF
 def extract_text_from_pdf(pdf_path):
     text = ""
     with pdfplumber.open(pdf_path) as pdf:
@@ -66,19 +66,19 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text()
     return text
 
-# Read the PDF document instead of the text file
+# Read the PDF document
 pdf_paths = [
     "Digital_Signal_Processing Doc.pdf",
     "Data Communication.pdf"
     ]
 
-all_texts = []  # This will hold all the text from all PDFs
+all_texts = []  
 for pdf_path in pdf_paths:
     raw_text = extract_text_from_pdf(pdf_path)
     texts = get_chunks(raw_text)
-    all_texts.extend(texts)  # Add chunks from this PDF to the list
+    all_texts.extend(texts)  
 
-# Add all texts from all PDFs into the vector store
+
 vector_store.add_texts(all_texts)
 
 
